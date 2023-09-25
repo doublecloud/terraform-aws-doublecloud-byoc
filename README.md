@@ -5,7 +5,7 @@ Terraform module which creates AWS resources to bring them into DoubleCloud.
 ## Usage
 ```hcl
 module "byoc" {
-  source = "doublecloud/byoc/aws"
+  source = "doublecloud/doublecloud-byoc/aws"
 
   ipv4_cidr = "196.168.42.0/24"
 }
