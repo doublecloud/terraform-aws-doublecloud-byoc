@@ -6,6 +6,8 @@ output "vpc_id" {
 output "iam_role_arn" {
   value       = aws_iam_role.doublecloud.arn
   description = "ARN of the IAM Role that has permissions to create resources in the VPC."
+
+  depends_on = [time_sleep.sleep_to_avoid_iam_race]
 }
 
 output "region_id" {
