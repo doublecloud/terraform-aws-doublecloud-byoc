@@ -30,13 +30,14 @@ resource "doublecloud_network" "aws" {
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.2.6 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 4.51.0 |
+| <a name="requirement_time"></a> [time](#requirement\_time) | >= 0.9.1 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | >= 4.51.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | n/a |
+| <a name="provider_time"></a> [time](#provider\_time) | >= 0.9.1 |
 
 ## Modules
 
