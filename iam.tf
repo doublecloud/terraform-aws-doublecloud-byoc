@@ -14,7 +14,10 @@ resource "aws_iam_role" "doublecloud" {
 
   assume_role_policy   = data.aws_iam_policy_document.trusted_policy.json
   permissions_boundary = aws_iam_policy.doublecloud.arn
-  managed_policy_arns  = [aws_iam_policy.doublecloud.arn]
+  managed_policy_arns = [
+    aws_iam_policy.doublecloud.arn,
+    aws_iam_policy.doublecloud_kruntime.arn
+  ]
 }
 
 data "aws_iam_policy_document" "trusted_policy" {
@@ -321,6 +324,157 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       test     = "StringNotEquals"
       values   = [local.policy_arn]
       variable = "iam:PermissionsBoundary"
+    }
+  }
+}
+
+resource "aws_iam_policy" "doublecloud_kruntime" {
+  name = "import-${aws_vpc.doublecloud.id}-kruntime"
+  path = "/DoubleCloud/"
+
+  policy = data.aws_iam_policy_document.doublecloud_kruntime_permissions.json
+}
+
+data "aws_iam_policy_document" "doublecloud_kruntime_permissions" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "EKSFullAccessDoubleCloud"
+    actions = [
+      "eks:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid = "EKSAllowPassRolesDoubleCloud"
+    actions = [
+      "iam:PassRole",
+    ]
+    effect    = "Allow"
+    resources = ["arn:aws:iam::${local.account_id}:role/DoubleCloud/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["eks.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid    = "EKSNodeGroupIAMPolicyDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "iam:GetRole",
+      "iam:ListAttachedRolePolicies",
+    ]
+    resources = ["arn:aws:iam::${local.account_id}:role/DoubleCloud/*"]
+  }
+
+  statement {
+    sid       = "EKSAllowCreateServiceLinkedRole"
+    effect    = "Allow"
+    resources = ["*"]
+    actions = [
+      "iam:CreateServiceLinkedRole"
+    ]
+    condition {
+      test     = "StringEquals"
+      variable = "iam:AWSServiceName"
+      values = [
+        "autoscaling.amazonaws.com",
+        "ec2scheduled.amazonaws.com",
+        "elasticloadbalancing.amazonaws.com",
+        "eks.amazonaws.com",
+        "eks-fargate-pods.amazonaws.com",
+        "eks-nodegroup.amazonaws.com",
+        "spot.amazonaws.com",
+        "spotfleet.amazonaws.com",
+        "transitgateway.amazonaws.com"
+      ]
+    }
+  }
+
+  statement {
+    sid    = "AutoscalingAllowAllKRuntime"
+    effect = "Allow"
+    actions = [
+      "autoscaling:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["kruntime-platform"]
+      variable = "aws:ResourceTag/eks:nodegroup-name"
+    }
+  }
+
+  statement {
+    sid    = "ElasticLoadBalancingAllowAllDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "elasticloadbalancing:*"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "ACMAccessDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "acm:RequestCertificate",
+      "acm:DescribeCertificate",
+      "acm:ListCertificates",
+      "acm:DeleteCertificate",
+      "acm:ListTagsForCertificate",
+      "acm:AddTagsToCertificate",
+      "acm:RemoveTagsFromCertificate",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "RDSAccessDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "rds:AddTagsToResource",
+
+      "rds:DescribeDBSubnetGroups",
+      "rds:DescribeDBClusters",
+      "rds:DescribeDBInstances",
+
+      "rds:CreateDBInstance",
+      "rds:CreateDBCluster",
+      "rds:DeleteDBInstance",
+      "rds:DeleteDBCluster",
+
+      "rds:StartDBInstance",
+      "rds:StartDBCluster",
+      "rds:StopDBInstance",
+      "rds:StopDBCluster",
+
+      "rds:CreateDBSubnetGroup",
+      "rds:DeleteDBSubnetGroup",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
     }
   }
 }
