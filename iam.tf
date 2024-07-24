@@ -397,6 +397,46 @@ data "aws_iam_policy_document" "doublecloud_kruntime_permissions" {
   }
 
   statement {
+    sid    = "EC2AllowAllDoubleCloudVPC"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = [aws_vpc.doublecloud.arn]
+  }
+
+  statement {
+    sid    = "EC2AllowAllWithinDoubleCloudVPC"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = [aws_vpc.doublecloud.arn]
+      variable = "ec2:Vpc"
+    }
+  }
+
+  statement {
+    sid    = "EC2AllowAllDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = [
+      "arn:aws:ec2:${local.region}:${local.account_id}:*/*",
+      "arn:aws:ec2:${local.region}::*/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
     sid    = "AutoscalingAllowAllKRuntime"
     effect = "Allow"
     actions = [
