@@ -2,8 +2,12 @@ locals {
   region     = data.aws_region.current.name
   account_id = data.aws_caller_identity.self.account_id
 
-  policy_arn = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}"
-  role_arn   = "arn:aws:iam::${local.account_id}:role/DoubleCloud/import-${aws_vpc.doublecloud.id}"
+  policy_arns = {
+    doublecloud          = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}"
+    doublecloud_kruntime = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}-kruntime"
+    permission_boundary  = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}-permission-boundary"
+  }
+  role_arn = "arn:aws:iam::${local.account_id}:role/DoubleCloud/import-${aws_vpc.doublecloud.id}"
 }
 
 resource "aws_iam_role" "doublecloud" {
@@ -13,7 +17,7 @@ resource "aws_iam_role" "doublecloud" {
   description = "The role that DoubleCloud will assume"
 
   assume_role_policy   = data.aws_iam_policy_document.trusted_policy.json
-  permissions_boundary = aws_iam_policy.doublecloud.arn
+  permissions_boundary = aws_iam_policy.doublecloud_permission_boundary.arn
   managed_policy_arns = [
     aws_iam_policy.doublecloud.arn,
     aws_iam_policy.doublecloud_kruntime.arn
@@ -34,6 +38,146 @@ data "aws_iam_policy_document" "trusted_policy" {
     actions = [
       "sts:AssumeRole"
     ]
+  }
+}
+
+resource "aws_iam_policy" "doublecloud_permission_boundary" {
+  name = "import-${aws_vpc.doublecloud.id}-permission-boundary"
+  path = "/DoubleCloud/"
+
+  policy = data.aws_iam_policy_document.doublecloud_permission_boundary.json
+}
+
+data "aws_iam_policy_document" "doublecloud_permission_boundary" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "autoscaling:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      values   = ["kruntime-platform"]
+      variable = "aws:ResourceTag/eks:nodegroup-name"
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "autoscaling:*",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "ec2:CreateVpc",
+      "ec2:DeleteVpc",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:*"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "iam:PutUserPermissionsBoundary",
+      "iam:PutRolePermissionsBoundary",
+      "iam:CreateUser",
+      "iam:CreateRole",
+    ]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/*",
+      "arn:aws:iam::${local.account_id}:role/*",
+    ]
+    condition {
+      test     = "StringNotEquals"
+      values   = [local.policy_arns[permissions_boundary]]
+      variable = "iam:PermissionsBoundary"
+    }
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "iam:DeletePolicy",
+      "iam:DeletePolicyVersion",
+      "iam:CreatePolicyVersion",
+      "iam:SetDefaultPolicyVersion",
+    ]
+    resources = [
+      local.policy_arns[doublecloud],
+      local.policy_arns[doublecloud_kruntime]
+    ]
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "iam:DeleteUserPermissionsBoundary",
+      "iam:DeleteRolePermissionsBoundary",
+    ]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/*",
+      "arn:aws:iam::${local.account_id}:role/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      values   = [local.policy_arns[permissions_boundary]]
+      variable = "iam:PermissionsBoundary"
+    }
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["iam:*"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["kms:CreateAlias"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ram:*"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "route53:AssociateVPCWithHostedZone",
+      "route53:DisassociateVPCFromHostedZone",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = ["*"]
+  }
+
+  statement {
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
   }
 }
 
@@ -285,7 +429,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "iam:CreatePolicyVersion",
       "iam:SetDefaultPolicyVersion",
     ]
-    resources = [local.policy_arn]
+    resources = [local.policy_arns[doublecloud]]
   }
 
   statement {
@@ -300,7 +444,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     ]
     condition {
       test     = "StringEquals"
-      values   = [local.policy_arn]
+      values   = [local.policy_arns[doublecloud_permission_boundary]]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -319,7 +463,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     ]
     condition {
       test     = "StringNotEquals"
-      values   = [local.policy_arn]
+      values   = [local.policy_arns[doublecloud_permission_boundary]]
       variable = "iam:PermissionsBoundary"
     }
   }
