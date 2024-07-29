@@ -581,7 +581,7 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
   }
 
   statement {
-    sid    = "AutoscalingAllowAllKRuntime"
+    sid    = "AutoscalingAllowAllControlplaneEKS"
     effect = "Allow"
     actions = [
       "autoscaling:*",
