@@ -3,9 +3,9 @@ locals {
   account_id = data.aws_caller_identity.self.account_id
 
   policy_arns = {
-    doublecloud          = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}"
-    doublecloud_kruntime = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}-kruntime"
-    permission_boundary  = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}-permission-boundary"
+    doublecloud                 = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}"
+    doublecloud_controlPlaneEKS = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}-ControlPlaneEKS"
+    permission_boundary         = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}-permission-boundary"
   }
   role_arn = "arn:aws:iam::${local.account_id}:role/DoubleCloud/import-${aws_vpc.doublecloud.id}"
 }
@@ -20,7 +20,7 @@ resource "aws_iam_role" "doublecloud" {
   permissions_boundary = aws_iam_policy.doublecloud_permission_boundary.arn
   managed_policy_arns = [
     aws_iam_policy.doublecloud.arn,
-    aws_iam_policy.doublecloud_kruntime.arn
+    aws_iam_policy.doublecloud_controlPlaneEKS.arn
   ]
 }
 
@@ -116,7 +116,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
     ]
     resources = [
       local.policy_arns[doublecloud],
-      local.policy_arns[doublecloud_kruntime]
+      local.policy_arns[doublecloud_controlPlaneEKS]
     ]
   }
 
@@ -469,14 +469,14 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
   }
 }
 
-resource "aws_iam_policy" "doublecloud_kruntime" {
-  name = "import-${aws_vpc.doublecloud.id}-kruntime"
+resource "aws_iam_policy" "doublecloud_ControlPlaneEKS" {
+  name = "import-${aws_vpc.doublecloud.id}-ControlPlaneEKS"
   path = "/DoubleCloud/"
 
-  policy = data.aws_iam_policy_document.doublecloud_kruntime_permissions.json
+  policy = data.aws_iam_policy_document.doublecloud_ControlPlaneEKS_permissions.json
 }
 
-data "aws_iam_policy_document" "doublecloud_kruntime_permissions" {
+data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
   version = "2012-10-17"
 
   statement {
