@@ -59,7 +59,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
     resources = ["*"]
     condition {
       test     = "StringNotEquals"
-      values   = ["kruntime-platform"]
+      values   = ["doublecloud-platform"]
       variable = "aws:ResourceTag/eks:nodegroup-name"
     }
   }
@@ -592,7 +592,7 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
     resources = ["*"]
     condition {
       test     = "StringEquals"
-      values   = ["kruntime-platform"]
+      values   = ["doublecloud-platform"]
       variable = "aws:ResourceTag/eks:nodegroup-name"
     }
   }
