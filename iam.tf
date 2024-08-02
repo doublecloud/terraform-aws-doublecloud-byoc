@@ -20,7 +20,7 @@ resource "aws_iam_role" "doublecloud" {
   permissions_boundary = aws_iam_policy.doublecloud_permission_boundary.arn
   managed_policy_arns = [
     aws_iam_policy.doublecloud.arn,
-    aws_iam_policy.doublecloud_controlPlaneEKS.arn
+    aws_iam_policy.doublecloud_ControlPlaneEKS.arn,
   ]
 }
 
@@ -101,7 +101,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
     ]
     condition {
       test     = "StringNotEquals"
-      values   = [local.policy_arns[permissions_boundary]]
+      values   = [local.policy_arns.permission_boundary]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -115,8 +115,8 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
       "iam:SetDefaultPolicyVersion",
     ]
     resources = [
-      local.policy_arns[doublecloud],
-      local.policy_arns[doublecloud_controlPlaneEKS]
+      local.policy_arns.doublecloud,
+      local.policy_arns.doublecloud_controlPlaneEKS
     ]
   }
 
@@ -132,7 +132,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
     ]
     condition {
       test     = "StringEquals"
-      values   = [local.policy_arns[permissions_boundary]]
+      values   = [local.policy_arns.permission_boundary]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -429,7 +429,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "iam:CreatePolicyVersion",
       "iam:SetDefaultPolicyVersion",
     ]
-    resources = [local.policy_arns[doublecloud]]
+    resources = [local.policy_arns.doublecloud]
   }
 
   statement {
@@ -444,7 +444,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     ]
     condition {
       test     = "StringEquals"
-      values   = [local.policy_arns[doublecloud_permission_boundary]]
+      values   = [local.policy_arns.permission_boundary]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -463,7 +463,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     ]
     condition {
       test     = "StringNotEquals"
-      values   = [local.policy_arns[doublecloud_permission_boundary]]
+      values   = [local.policy_arns.permission_boundary]
       variable = "iam:PermissionsBoundary"
     }
   }
