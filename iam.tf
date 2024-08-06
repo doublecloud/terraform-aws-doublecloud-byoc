@@ -77,6 +77,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "ec2:CreateNatGateway",
       "ec2:AllocateAddress",
       "ec2:CreateRouteTable",
+      "ec2:CreateVpcEndpoint",
     ]
     resources = [
       "arn:aws:ec2:${local.region}:${var.doublecloud_controlplane_account_id}:transit-gateway/*",
@@ -90,6 +91,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:ec2:${local.region}:${local.account_id}:natgateway/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:elastic-ip/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:route-table/*",
+      "arn:aws:ec2:${local.region}:${local.account_id}:vpc-endpoint/*",
     ]
   }
 
@@ -145,6 +147,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
         "CreateNatGateway",
         "AllocateAddress",
         "CreateRouteTable",
+        "CreateVpcEndpoint",
       ]
     }
   }
