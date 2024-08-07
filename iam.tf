@@ -17,7 +17,7 @@ resource "aws_iam_role" "doublecloud" {
   description = "The role that DoubleCloud will assume"
 
   assume_role_policy   = data.aws_iam_policy_document.trusted_policy.json
-  permissions_boundary = aws_iam_policy.doublecloud_permission_boundary.arn
+#  permissions_boundary = aws_iam_policy.doublecloud_permission_boundary.arn
   managed_policy_arns = [
     aws_iam_policy.doublecloud.arn,
     aws_iam_policy.doublecloud_ControlPlaneEKS.arn,
@@ -179,6 +179,14 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
       variable = "aws:ResourceTag/AtDoubleCloud"
     }
   }
+
+  statement {
+    sid = "EKSFullAccessDoubleCloud"
+    actions = [
+      "eks:*",
+    ]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:*/DoubleCloud-Airflow-*"]
+  }
 }
 
 resource "aws_iam_policy" "doublecloud" {
@@ -224,6 +232,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "ec2:CreateNatGateway",
       "ec2:AllocateAddress",
       "ec2:CreateRouteTable",
+      "ec2:CreateLaunchTemplate",
     ]
     resources = [
       "arn:aws:ec2:${local.region}:${var.doublecloud_controlplane_account_id}:transit-gateway/*",
@@ -237,6 +246,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:ec2:${local.region}:${local.account_id}:natgateway/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:elastic-ip/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:route-table/*",
+      "arn:aws:ec2:${local.region}:${local.account_id}:launch-template/*",
     ]
   }
 
@@ -292,6 +302,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
         "CreateNatGateway",
         "AllocateAddress",
         "CreateRouteTable",
+        "CreateLaunchTemplate",
       ]
     }
   }
@@ -449,24 +460,24 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     }
   }
 
-  statement {
-    effect = "Deny"
-    actions = [
-      "iam:PutUserPermissionsBoundary",
-      "iam:PutRolePermissionsBoundary",
-      "iam:CreateUser",
-      "iam:CreateRole",
-    ]
-    resources = [
-      "arn:aws:iam::${local.account_id}:user/*",
-      "arn:aws:iam::${local.account_id}:role/*",
-    ]
-    condition {
-      test     = "StringNotEquals"
-      values   = [local.policy_arns.permission_boundary]
-      variable = "iam:PermissionsBoundary"
-    }
-  }
+#  statement {
+#    effect = "Deny"
+#    actions = [
+#      "iam:PutUserPermissionsBoundary",
+#      "iam:PutRolePermissionsBoundary",
+#      "iam:CreateUser",
+#      "iam:CreateRole",
+#    ]
+#    resources = [
+#      "arn:aws:iam::${local.account_id}:user/*",
+#      "arn:aws:iam::${local.account_id}:role/*",
+#    ]
+#    condition {
+#      test     = "StringNotEquals"
+#      values   = [local.policy_arns.permission_boundary]
+#      variable = "iam:PermissionsBoundary"
+#    }
+#  }
 }
 
 resource "aws_iam_policy" "doublecloud_ControlPlaneEKS" {
@@ -484,12 +495,7 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
     actions = [
       "eks:*",
     ]
-    resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      values   = ["true"]
-      variable = "aws:ResourceTag/AtDoubleCloud"
-    }
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:*/DoubleCloud-Airflow-*"]
   }
 
   statement {
@@ -498,7 +504,7 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
       "iam:PassRole",
     ]
     effect    = "Allow"
-    resources = ["arn:aws:iam::${local.account_id}:role/DoubleCloud/*"]
+    resources = ["arn:aws:iam::${local.account_id}:role/*"]
     condition {
       test     = "StringEquals"
       variable = "iam:PassedToService"
@@ -514,6 +520,15 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
       "iam:ListAttachedRolePolicies",
     ]
     resources = ["arn:aws:iam::${local.account_id}:role/DoubleCloud/*"]
+  }
+
+  statement {
+    sid    = "SLRValidation"
+    effect = "Allow"
+    actions = [
+      "iam:GetRole",
+    ]
+    resources = ["arn:aws:iam::${local.account_id}:role/*"]
   }
 
   statement {
@@ -581,6 +596,23 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
   }
 
   statement {
+    sid    = "WrongTag"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = [
+      "arn:aws:ec2:${local.region}:${local.account_id}:*/*",
+      "arn:aws:ec2:${local.region}::*/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/atDoubleCloud"
+    }
+  }
+
+  statement {
     sid    = "AutoscalingAllowAllControlplaneEKS"
     effect = "Allow"
     actions = [
@@ -595,6 +627,14 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
   }
 
   statement {
+    effect = "Allow"
+    actions = [
+      "autoscaling:Describe*",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid    = "ElasticLoadBalancingAllowAllDoubleCloud"
     effect = "Allow"
     actions = [
@@ -606,6 +646,15 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
       values   = ["true"]
       variable = "aws:ResourceTag/AtDoubleCloud"
     }
+  }
+
+  statement {
+    sid    = "DescribeElasticLoadBalancing"
+    effect = "Allow"
+    actions = [
+      "elasticloadbalancing:Describe*"
+    ]
+    resources = ["*"]
   }
 
   statement {
