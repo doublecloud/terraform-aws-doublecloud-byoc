@@ -88,6 +88,14 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
   }
 
   statement {
+    sid = "EKSFullAccessDoubleCloud"
+    actions = [
+      "eks:*",
+    ]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:*/DoubleCloud-Airflow-*"]
+  }
+
+  statement {
     effect = "Deny"
     actions = [
       "iam:PutUserPermissionsBoundary",
@@ -168,14 +176,6 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
     effect    = "Allow"
     actions   = ["sts:AssumeRole"]
     resources = ["*"]
-  }
-
-  statement {
-    sid = "EKSFullAccessDoubleCloud"
-    actions = [
-      "eks:*",
-    ]
-    resources = ["arn:aws:eks:${local.region}:${local.account_id}:*/DoubleCloud-Airflow-*"]
   }
 
   statement {
@@ -700,5 +700,96 @@ data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
 # https://github.com/hashicorp/terraform-provider-aws/issues/6566
 resource "time_sleep" "sleep_to_avoid_iam_race" {
   depends_on      = [aws_iam_role.doublecloud]
+  create_duration = "30s"
+}
+
+data "aws_iam_policy_document" "doublecloud_eks_assume_role" {
+  version = "2012-10-17"
+  statement {
+    sid    = "EKSCanAssumeThisRole"
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
+    }
+    actions = [
+      "sts:AssumeRole"
+    ]
+  }
+}
+
+resource "aws_iam_role" "doublecloud_eks" {
+  name = "import-${aws_vpc.doublecloud.id}-eks-node-role"
+  path = "/DoubleCloud/"
+
+  description = "The role that DoubleCloud EKS Cluster will assume"
+
+  assume_role_policy  = data.aws_iam_policy_document.doublecloud_eks_assume_role.json
+  managed_policy_arns = ["arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"]
+}
+
+
+data "aws_iam_policy_document" "doublecloud_eks_nodegroup_assume_role" {
+  version = "2012-10-17"
+  statement {
+    sid    = "EKSNodeGroupCanAssumeThisRole"
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+    actions = [
+      "sts:AssumeRole"
+    ]
+  }
+}
+resource "aws_iam_role" "doublecloud_eks_nodegroup" {
+  name = "import-${aws_vpc.doublecloud.id}-eks-node-role"
+  path = "/DoubleCloud/"
+
+  description = "The role that DoubleCloud EKS NodeGroups will assume"
+
+  assume_role_policy = data.aws_iam_policy_document.doublecloud_eks_nodegroup_assume_role.json
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+    "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy",
+    aws_iam_policy.doublecloud_EKSNodeGroup.arn
+  ]
+}
+
+resource "aws_iam_policy" "doublecloud_EKSNodeGroup" {
+  name = "import-${aws_vpc.doublecloud.id}-EKSNodeGroup"
+  path = "/DoubleCloud/"
+
+  policy = data.aws_iam_policy_document.doublecloud_EKSNodeGroup_permissions.json
+}
+
+data "aws_iam_policy_document" "doublecloud_EKSNodeGroup_permissions" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "EKSNodeGroupAutoScaler"
+    actions = [
+      "ec2:DescribeImages",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:DescribeInstanceTypes",
+      "ec2:GetInstanceTypesFromInstanceRequirements",
+      "autoscaling:DescribeTags",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "autoscaling:SetDesiredCapacity",
+      "eks:DescribeNodegroup",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "time_sleep" "sleep_to_avoid_iam_race" {
+  depends_on      = [aws_iam_role.doublecloud_eks]
   create_duration = "30s"
 }
