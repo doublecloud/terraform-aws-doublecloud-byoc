@@ -719,7 +719,7 @@ data "aws_iam_policy_document" "doublecloud_eks_assume_role" {
 }
 
 resource "aws_iam_role" "doublecloud_eks" {
-  name = "import-${aws_vpc.doublecloud.id}-eks-node-role"
+  name = "import-${aws_vpc.doublecloud.id}-eks-cluster-role"
   path = "/DoubleCloud/"
 
   description = "The role that DoubleCloud EKS Cluster will assume"
