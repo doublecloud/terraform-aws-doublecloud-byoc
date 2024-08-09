@@ -2,8 +2,12 @@ locals {
   region     = data.aws_region.current.name
   account_id = data.aws_caller_identity.self.account_id
 
-  policy_arn = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}"
-  role_arn   = "arn:aws:iam::${local.account_id}:role/DoubleCloud/import-${aws_vpc.doublecloud.id}"
+  policy_arns = {
+    doublecloud                 = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}"
+    doublecloud_controlPlaneEKS = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}-ControlPlaneEKS"
+    permission_boundary         = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/import-${aws_vpc.doublecloud.id}-permission-boundary"
+  }
+  role_arn = "arn:aws:iam::${local.account_id}:role/DoubleCloud/import-${aws_vpc.doublecloud.id}"
 }
 
 resource "aws_iam_role" "doublecloud" {
@@ -13,8 +17,11 @@ resource "aws_iam_role" "doublecloud" {
   description = "The role that DoubleCloud will assume"
 
   assume_role_policy   = data.aws_iam_policy_document.trusted_policy.json
-  permissions_boundary = aws_iam_policy.doublecloud.arn
-  managed_policy_arns  = [aws_iam_policy.doublecloud.arn]
+  permissions_boundary = aws_iam_policy.doublecloud_permission_boundary.arn
+  managed_policy_arns = [
+    aws_iam_policy.doublecloud.arn,
+    aws_iam_policy.doublecloud_ControlPlaneEKS.arn,
+  ]
 }
 
 data "aws_iam_policy_document" "trusted_policy" {
@@ -31,6 +38,154 @@ data "aws_iam_policy_document" "trusted_policy" {
     actions = [
       "sts:AssumeRole"
     ]
+  }
+}
+
+resource "aws_iam_policy" "doublecloud_permission_boundary" {
+  name = "import-${aws_vpc.doublecloud.id}-permission-boundary"
+  path = "/DoubleCloud/"
+
+  policy = data.aws_iam_policy_document.doublecloud_permission_boundary.json
+}
+
+data "aws_iam_policy_document" "doublecloud_permission_boundary" {
+  version = "2012-10-17"
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "autoscaling:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      values   = ["doublecloud-platform"]
+      variable = "aws:ResourceTag/eks:nodegroup-name"
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "autoscaling:*",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "ec2:CreateVpc",
+      "ec2:DeleteVpc",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:*"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "EKSFullAccessDoubleCloud"
+    actions = [
+      "eks:*",
+    ]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:*/DoubleCloud-Airflow-*"]
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "iam:PutUserPermissionsBoundary",
+      "iam:PutRolePermissionsBoundary",
+      "iam:CreateUser",
+      "iam:CreateRole",
+    ]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/*",
+      "arn:aws:iam::${local.account_id}:role/*",
+    ]
+    condition {
+      test     = "StringNotEquals"
+      values   = [local.policy_arns.permission_boundary]
+      variable = "iam:PermissionsBoundary"
+    }
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "iam:DeletePolicy",
+      "iam:DeletePolicyVersion",
+      "iam:CreatePolicyVersion",
+      "iam:SetDefaultPolicyVersion",
+    ]
+    resources = [
+      local.policy_arns.doublecloud,
+      local.policy_arns.doublecloud_controlPlaneEKS
+    ]
+  }
+
+  statement {
+    effect = "Deny"
+    actions = [
+      "iam:DeleteUserPermissionsBoundary",
+      "iam:DeleteRolePermissionsBoundary",
+    ]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/*",
+      "arn:aws:iam::${local.account_id}:role/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      values   = [local.policy_arns.permission_boundary]
+      variable = "iam:PermissionsBoundary"
+    }
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["iam:*"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["kms:CreateAlias"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ram:*"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "route53:AssociateVPCWithHostedZone",
+      "route53:DisassociateVPCFromHostedZone",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = ["*"]
+  }
+
+  statement {
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
   }
 }
 
@@ -78,6 +233,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "ec2:AllocateAddress",
       "ec2:CreateRouteTable",
       "ec2:CreateVpcEndpoint",
+      "ec2:CreateLaunchTemplate",
     ]
     resources = [
       "arn:aws:ec2:${local.region}:${var.doublecloud_controlplane_account_id}:transit-gateway/*",
@@ -92,6 +248,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:ec2:${local.region}:${local.account_id}:elastic-ip/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:route-table/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:vpc-endpoint/*",
+      "arn:aws:ec2:${local.region}:${local.account_id}:launch-template/*",
     ]
   }
 
@@ -148,6 +305,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
         "AllocateAddress",
         "CreateRouteTable",
         "CreateVpcEndpoint",
+        "CreateLaunchTemplate",
       ]
     }
   }
@@ -285,7 +443,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "iam:CreatePolicyVersion",
       "iam:SetDefaultPolicyVersion",
     ]
-    resources = [local.policy_arn]
+    resources = [local.policy_arns.doublecloud]
   }
 
   statement {
@@ -300,7 +458,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     ]
     condition {
       test     = "StringEquals"
-      values   = [local.policy_arn]
+      values   = [local.policy_arns.permission_boundary]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -319,8 +477,220 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     ]
     condition {
       test     = "StringNotEquals"
-      values   = [local.policy_arn]
+      values   = [local.policy_arns.permission_boundary]
       variable = "iam:PermissionsBoundary"
+    }
+  }
+}
+
+resource "aws_iam_policy" "doublecloud_ControlPlaneEKS" {
+  name = "import-${aws_vpc.doublecloud.id}-ControlPlaneEKS"
+  path = "/DoubleCloud/"
+
+  policy = data.aws_iam_policy_document.doublecloud_ControlPlaneEKS_permissions.json
+}
+
+data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "EKSFullAccessDoubleCloud"
+    actions = [
+      "eks:*",
+    ]
+    resources = ["arn:aws:eks:${local.region}:${local.account_id}:*/DoubleCloud-Airflow-*"]
+  }
+
+  statement {
+    sid = "EKSAllowPassRolesDoubleCloud"
+    actions = [
+      "iam:PassRole",
+    ]
+    effect    = "Allow"
+    resources = ["arn:aws:iam::${local.account_id}:role/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["eks.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid    = "SLRValidation"
+    effect = "Allow"
+    actions = [
+      "iam:GetRole",
+    ]
+    resources = ["arn:aws:iam::${local.account_id}:role/*"]
+  }
+
+  statement {
+    sid    = "EKSNodeGroupIAMPolicyDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "iam:GetRole",
+      "iam:ListAttachedRolePolicies",
+    ]
+    resources = ["arn:aws:iam::${local.account_id}:role/DoubleCloud/*"]
+  }
+
+  statement {
+    sid       = "EKSAllowCreateServiceLinkedRole"
+    effect    = "Allow"
+    resources = ["*"]
+    actions = [
+      "iam:CreateServiceLinkedRole"
+    ]
+    condition {
+      test     = "StringEquals"
+      variable = "iam:AWSServiceName"
+      values = [
+        "autoscaling.amazonaws.com",
+        "ec2scheduled.amazonaws.com",
+        "elasticloadbalancing.amazonaws.com",
+        "eks.amazonaws.com",
+        "eks-fargate-pods.amazonaws.com",
+        "eks-nodegroup.amazonaws.com",
+        "spot.amazonaws.com",
+        "spotfleet.amazonaws.com",
+        "transitgateway.amazonaws.com"
+      ]
+    }
+  }
+
+  statement {
+    sid    = "EC2AllowAllDoubleCloudVPC"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = [aws_vpc.doublecloud.arn]
+  }
+
+  statement {
+    sid    = "EC2AllowAllWithinDoubleCloudVPC"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = [aws_vpc.doublecloud.arn]
+      variable = "ec2:Vpc"
+    }
+  }
+
+  statement {
+    sid    = "EC2AllowAllDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = [
+      "arn:aws:ec2:${local.region}:${local.account_id}:*/*",
+      "arn:aws:ec2:${local.region}::*/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/atDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "AutoscalingAllowAllControlplaneEKS"
+    effect = "Allow"
+    actions = [
+      "autoscaling:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["doublecloud-platform"]
+      variable = "aws:ResourceTag/eks:nodegroup-name"
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "autoscaling:Describe*",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ElasticLoadBalancingAllowAllDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "elasticloadbalancing:*"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "DescribeElasticLoadBalancing"
+    effect = "Allow"
+    actions = [
+      "elasticloadbalancing:Describe*"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ACMAccessDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "acm:RequestCertificate",
+      "acm:DescribeCertificate",
+      "acm:ListCertificates",
+      "acm:DeleteCertificate",
+      "acm:ListTagsForCertificate",
+      "acm:AddTagsToCertificate",
+      "acm:RemoveTagsFromCertificate",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "RDSAccessDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "rds:AddTagsToResource",
+
+      "rds:DescribeDBSubnetGroups",
+      "rds:DescribeDBClusters",
+      "rds:DescribeDBInstances",
+
+      "rds:CreateDBInstance",
+      "rds:CreateDBCluster",
+      "rds:DeleteDBInstance",
+      "rds:DeleteDBCluster",
+
+      "rds:StartDBInstance",
+      "rds:StartDBCluster",
+      "rds:StopDBInstance",
+      "rds:StopDBCluster",
+
+      "rds:CreateDBSubnetGroup",
+      "rds:DeleteDBSubnetGroup",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
     }
   }
 }
@@ -330,5 +700,96 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
 # https://github.com/hashicorp/terraform-provider-aws/issues/6566
 resource "time_sleep" "sleep_to_avoid_iam_race" {
   depends_on      = [aws_iam_role.doublecloud]
+  create_duration = "30s"
+}
+
+data "aws_iam_policy_document" "doublecloud_eks_assume_role" {
+  version = "2012-10-17"
+  statement {
+    sid    = "EKSCanAssumeThisRole"
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
+    }
+    actions = [
+      "sts:AssumeRole"
+    ]
+  }
+}
+
+resource "aws_iam_role" "doublecloud_eks" {
+  name = "import-${aws_vpc.doublecloud.id}-eks-cluster-role"
+  path = "/DoubleCloud/"
+
+  description = "The role that DoubleCloud EKS Cluster will assume"
+
+  assume_role_policy  = data.aws_iam_policy_document.doublecloud_eks_assume_role.json
+  managed_policy_arns = ["arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"]
+}
+
+
+data "aws_iam_policy_document" "doublecloud_eks_nodegroup_assume_role" {
+  version = "2012-10-17"
+  statement {
+    sid    = "EKSNodeGroupCanAssumeThisRole"
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+    actions = [
+      "sts:AssumeRole"
+    ]
+  }
+}
+resource "aws_iam_role" "doublecloud_eks_nodegroup" {
+  name = "import-${aws_vpc.doublecloud.id}-eks-node-role"
+  path = "/DoubleCloud/"
+
+  description = "The role that DoubleCloud EKS NodeGroups will assume"
+
+  assume_role_policy = data.aws_iam_policy_document.doublecloud_eks_nodegroup_assume_role.json
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+    "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy",
+    aws_iam_policy.doublecloud_EKSNodeGroup.arn
+  ]
+}
+
+resource "aws_iam_policy" "doublecloud_EKSNodeGroup" {
+  name = "import-${aws_vpc.doublecloud.id}-EKSNodeGroup"
+  path = "/DoubleCloud/"
+
+  policy = data.aws_iam_policy_document.doublecloud_EKSNodeGroup_permissions.json
+}
+
+data "aws_iam_policy_document" "doublecloud_EKSNodeGroup_permissions" {
+  version = "2012-10-17"
+
+  statement {
+    sid = "EKSNodeGroupAutoScaler"
+    actions = [
+      "ec2:DescribeImages",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:DescribeInstanceTypes",
+      "ec2:GetInstanceTypesFromInstanceRequirements",
+      "autoscaling:DescribeTags",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "autoscaling:SetDesiredCapacity",
+      "eks:DescribeNodegroup",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "time_sleep" "sleep_to_avoid_iam_race" {
+  depends_on      = [aws_iam_role.doublecloud_eks]
   create_duration = "30s"
 }
