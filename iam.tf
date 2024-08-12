@@ -733,6 +733,76 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_cluster" {
   version = "2012-10-17"
 
   statement {
+    sid    = "AmazonEKSClusterPolicyCreateDescribeV6"
+    effect = "Allow"
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:UpdateAutoScalingGroup",
+      "ec2:AttachVolume",
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:CreateRoute",
+      "ec2:CreateSecurityGroup",
+      "ec2:CreateTags",
+      "ec2:CreateVolume",
+      "ec2:Describe*",
+      "ec2:ModifyInstanceAttribute",
+      "ec2:ModifyVolume",
+      "elasticloadbalancing:AddTags",
+      "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
+      "elasticloadbalancing:AttachLoadBalancerToSubnets",
+      "elasticloadbalancing:ConfigureHealthCheck",
+      "elasticloadbalancing:CreateListener",
+      "elasticloadbalancing:CreateLoadBalancer",
+      "elasticloadbalancing:CreateLoadBalancerListeners",
+      "elasticloadbalancing:CreateLoadBalancerPolicy",
+      "elasticloadbalancing:CreateTargetGroup",
+      "elasticloadbalancing:Describe*",
+      "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+      "elasticloadbalancing:RegisterTargets",
+      "elasticloadbalancing:SetLoadBalancerPoliciesForBackendServer",
+      "elasticloadbalancing:SetLoadBalancerPoliciesOfListener",
+      "kms:DescribeKey"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "AmazonEKSClusterPolicyModifyDeleteV6"
+    effect = "Allow"
+    actions = [
+      "ec2:DeleteRoute",
+      "ec2:DeleteSecurityGroup",
+      "ec2:DeleteVolume",
+      "ec2:DetachVolume",
+      "ec2:ModifyInstanceAttribute",
+      "ec2:ModifyVolume",
+      "ec2:RevokeSecurityGroupIngress",
+      "elasticloadbalancing:DeleteListener",
+      "elasticloadbalancing:DeleteLoadBalancer",
+      "elasticloadbalancing:DeleteLoadBalancerListeners",
+      "elasticloadbalancing:DeleteTargetGroup",
+      "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+      "elasticloadbalancing:DeregisterTargets",
+      "elasticloadbalancing:DetachLoadBalancerFromSubnets",
+      "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:ModifyLoadBalancerAttributes",
+      "elasticloadbalancing:ModifyTargetGroup",
+      "elasticloadbalancing:ModifyTargetGroupAttributes",
+    ]
+    resources = ["*"]
+    # TODO: add some condition or restriction here
+  }
+
+  statement {
+    sid       = "AmazonEKSClusterPolicyCreateServiceLinkedRoleV6"
+    effect    = "Allow"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:aws:iam::*:role/aws-service-role/*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["elasticloadbalancing.amazonaws.com"]
+      variable = "iam:AWSServiceName"
+    }
   }
 }
 
@@ -747,6 +817,54 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node" {
   version = "2012-10-17"
 
   statement {
+    sid    = "AmazonEC2ContainerRegistryReadOnlyV3"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheck*",
+      "ecr:BatchGet*",
+      "ecr:Describe*",
+      "ecr:Get*",
+      "ecr:List*",
+    ]
+    resources = "*"
+  }
+  statement {
+    sid    = "AmazonEKSCNIPolicyCreateDescribeV5"
+    effect = "Allow"
+    actions = [
+      "ec2:AssignPrivateIpAddresses",
+      "ec2:AttachNetworkInterface",
+      "ec2:CreateNetworkInterface",
+      "ec2:Describe*",
+    ]
+    resources = "*"
+  }
+  statement {
+    sid    = "AmazonEKSCNIPolicyModifyDeleteV5"
+    effect = "Allow"
+    actions = [
+      "ec2:DeleteNetworkInterface",
+      "ec2:DetachNetworkInterface",
+      "ec2:ModifyNetworkInterfaceAttribute",
+      "ec2:UnassignPrivateIpAddresses"
+    ]
+    resources = "*"
+    # TODO: add restriction here
+  }
+  statement {
+    sid       = "AmazonEKSCNIPolicyTagsV5"
+    effect    = "Allow"
+    actions   = ["ec2:CreateTags"]
+    resources = ["arn:aws:ec2:*:*:network-interface/*"]
+  }
+  statement {
+    sid    = "AmazonEKSWorkerNodePolicyV3"
+    effect = "Allow"
+    actions = [
+      "ec2:Describe*",
+      "eks-auth:AssumeRoleForPodIdentity"
+    ]
+    resources = "*"
   }
 }
 
@@ -761,5 +879,131 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
   version = "2012-10-17"
 
   statement {
+    sid    = "AmazonEC2ContainerRegistryReadOnlyV3"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheck*",
+      "ecr:BatchGet*",
+      "ecr:Describe*",
+      "ecr:Get*",
+      "ecr:List*",
+    ]
+    resources = "*"
+  }
+  statement {
+    sid    = "AmazonEKSCNIPolicyCreateDescribeV5"
+    effect = "Allow"
+    actions = [
+      "ec2:AssignPrivateIpAddresses",
+      "ec2:AttachNetworkInterface",
+      "ec2:CreateNetworkInterface",
+      "ec2:Describe*",
+    ]
+    resources = "*"
+  }
+  statement {
+    sid    = "AmazonEKSCNIPolicyModifyDeleteV5"
+    effect = "Allow"
+    actions = [
+      "ec2:DeleteNetworkInterface",
+      "ec2:DetachNetworkInterface",
+      "ec2:ModifyNetworkInterfaceAttribute",
+      "ec2:UnassignPrivateIpAddresses"
+    ]
+    resources = "*"
+    # TODO: add restriction here
+  }
+  statement {
+    sid       = "AmazonEKSCNIPolicyTagsV5"
+    effect    = "Allow"
+    actions   = ["ec2:CreateTags"]
+    resources = ["arn:aws:ec2:*:*:network-interface/*"]
+  }
+  statement {
+    sid    = "AmazonEKSWorkerNodePolicyV3"
+    effect = "Allow"
+    actions = [
+      "ec2:Describe*",
+      "eks-auth:AssumeRoleForPodIdentity"
+    ]
+    resources = "*"
+  }
+
+  statement {
+    sid    = "AmazonEBSCSIDriverPolicyEC2CreateDescribeV2"
+    effect = "Allow"
+    actions = [
+      "ec2:CreateSnapshot",
+      "ec2:AttachVolume",
+      "ec2:DetachVolume",
+      "ec2:ModifyVolume",
+      "ec2:Describe*",
+    ]
+    resources = "*"
+  }
+
+  statement {
+    sid    = "AmazonEBSCSIDriverPolicyEC2ModifyDeleteV2"
+    effect = "Allow"
+    actions = [
+      "ec2:DetachVolume",
+      "ec2:ModifyVolume",
+    ]
+    resources = "*"
+    # TODO add restriction here
+  }
+  statement {
+    sid     = "AmazonEBSCSIDriverPolicyEC2CreateV2"
+    effect  = "Allow"
+    actions = ["ec2:Create*"]
+  }
+  statement {
+    sid     = "AmazonEBSCSIDriverPolicyEC2DeleteTagsV2"
+    effect  = "Allow"
+    actions = ["ec2:DeleteTags"]
+    resources = [
+      "arn:aws:ec2:*:*:volume/*",
+      "arn:aws:ec2:*:*:snapshot/*"
+    ]
+    # TODO: add some restrictions here
+  }
+  statement {
+    sid       = "AmazonEBSCSIDriverPolicyEC2DeleteVolumeV2"
+    effect    = "Allow"
+    actions   = ["ec2:DeleteVolume"]
+    resources = "*"
+    # TODO: add some restrictions here
+    condition {
+      test     = "StringLike"
+      values   = ["true"]
+      variable = "ec2:ResourceTag/ebs.csi.aws.com/cluster"
+    }
+    condition {
+      test     = "StringLike"
+      values   = ["*"]
+      variable = "ec2:ResourceTag/CSIVolumeName"
+    }
+    condition {
+      test     = "StringLike"
+      values   = ["*"]
+      variable = "ec2:ResourceTag/kubernetes.io/created-for/pvc/name"
+    }
+  }
+  statement {
+    sid       = "AmazonEBSCSIDriverPolicyEC2DeleteSnapshotV2"
+    effect    = "Allow"
+    actions   = ["ec2:DeleteSnapshot"]
+    resources = "*"
+    # TODO: add some restrictions here
+    condition {
+      test     = "StringLike"
+      values   = ["*"]
+      variable = "ec2:ResourceTag/CSIVolumeSnapshotName"
+    }
+    condition {
+      test     = "StringLike"
+      values   = ["true"]
+      variable = "ec2:ResourceTag/ebs.csi.aws.com/cluster"
+    }
   }
 }
