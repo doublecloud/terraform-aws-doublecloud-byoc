@@ -24,8 +24,8 @@ resource "aws_iam_role" "doublecloud" {
   assume_role_policy   = data.aws_iam_policy_document.trusted_policy.json
   permissions_boundary = aws_iam_policy.doublecloud_permission_boundary.arn
   managed_policy_arns = [
-    aws_iam_policy.doublecloud.arn,
-    aws_iam_policy.doublecloud_control_plane_EKS.arn,
+    "${local.base_policy_arn}${local.policy_names.doublecloud}",
+    "${local.base_policy_arn}${local.policy_names.doublecloud_control_plane_EKS}",
   ]
 }
 
@@ -155,10 +155,10 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
     condition {
       test = "StringEquals"
       values = [
-        local.policy_arns.permission_boundary,
-        local.policy_arns.permission_boundary_eks_cluster,
-        local.policy_arns.permission_boundary_eks_node,
-        local.policy_arns.permission_boundary_eks_node_platform,
+        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
       ]
       variable = "iam:PermissionsBoundary"
     }
@@ -462,7 +462,14 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "iam:CreatePolicyVersion",
       "iam:SetDefaultPolicyVersion",
     ]
-    resources = [local.policy_arns.doublecloud]
+    resources = [
+      "${local.base_policy_arn}${local.policy_names.doublecloud}",
+      "${local.base_policy_arn}${local.policy_names.doublecloud_control_plane_EKS}",
+      "${local.base_policy_arn}${local.policy_names.permission_boundary}",
+      "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
+      "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
+      "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
+    ]
   }
 
   statement {
@@ -476,8 +483,13 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test     = "StringEquals"
-      values   = [local.policy_arns.permission_boundary]
+      test = "StringEquals"
+      values = [
+        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
+      ]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -495,8 +507,13 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test     = "StringNotEquals"
-      values   = [local.policy_arns.permission_boundary]
+      test = "StringNotEquals"
+      values = [
+        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
+      ]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -509,7 +526,7 @@ resource "aws_iam_policy" "doublecloud_ControlPlaneEKS" {
   policy = data.aws_iam_policy_document.doublecloud_control_plane_EKS_permissions.json
 }
 
-data "aws_iam_policy_document" "doublecloud_ControlPlaneEKS_permissions" {
+data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
   version = "2012-10-17"
 
   statement {
@@ -826,7 +843,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node" {
       "ecr:Get*",
       "ecr:List*",
     ]
-    resources = "*"
+    resources = ["*"]
   }
   statement {
     sid    = "AmazonEKSCNIPolicyCreateDescribeV5"
@@ -837,7 +854,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node" {
       "ec2:CreateNetworkInterface",
       "ec2:Describe*",
     ]
-    resources = "*"
+    resources = ["*"]
   }
   statement {
     sid    = "AmazonEKSCNIPolicyModifyDeleteV5"
@@ -848,7 +865,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node" {
       "ec2:ModifyNetworkInterfaceAttribute",
       "ec2:UnassignPrivateIpAddresses"
     ]
-    resources = "*"
+    resources = ["*"]
     # TODO: add restriction here
   }
   statement {
@@ -864,7 +881,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node" {
       "ec2:Describe*",
       "eks-auth:AssumeRoleForPodIdentity"
     ]
-    resources = "*"
+    resources = ["*"]
   }
 }
 
@@ -888,7 +905,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "ecr:Get*",
       "ecr:List*",
     ]
-    resources = "*"
+    resources = ["*"]
   }
   statement {
     sid    = "AmazonEKSCNIPolicyCreateDescribeV5"
@@ -899,7 +916,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "ec2:CreateNetworkInterface",
       "ec2:Describe*",
     ]
-    resources = "*"
+    resources = ["*"]
   }
   statement {
     sid    = "AmazonEKSCNIPolicyModifyDeleteV5"
@@ -910,7 +927,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "ec2:ModifyNetworkInterfaceAttribute",
       "ec2:UnassignPrivateIpAddresses"
     ]
-    resources = "*"
+    resources = ["*"]
     # TODO: add restriction here
   }
   statement {
@@ -926,7 +943,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "ec2:Describe*",
       "eks-auth:AssumeRoleForPodIdentity"
     ]
-    resources = "*"
+    resources = ["*"]
   }
 
   statement {
@@ -939,7 +956,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "ec2:ModifyVolume",
       "ec2:Describe*",
     ]
-    resources = "*"
+    resources = ["*"]
   }
 
   statement {
@@ -949,7 +966,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "ec2:DetachVolume",
       "ec2:ModifyVolume",
     ]
-    resources = "*"
+    resources = ["*"]
     # TODO add restriction here
   }
   statement {
@@ -971,7 +988,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
     sid       = "AmazonEBSCSIDriverPolicyEC2DeleteVolumeV2"
     effect    = "Allow"
     actions   = ["ec2:DeleteVolume"]
-    resources = "*"
+    resources = ["*"]
     # TODO: add some restrictions here
     condition {
       test     = "StringLike"
@@ -993,7 +1010,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
     sid       = "AmazonEBSCSIDriverPolicyEC2DeleteSnapshotV2"
     effect    = "Allow"
     actions   = ["ec2:DeleteSnapshot"]
-    resources = "*"
+    resources = ["*"]
     # TODO: add some restrictions here
     condition {
       test     = "StringLike"
