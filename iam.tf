@@ -960,9 +960,10 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
     # TODO add restriction here
   }
   statement {
-    sid     = "AmazonEBSCSIDriverPolicyEC2CreateV2"
-    effect  = "Allow"
-    actions = ["ec2:Create*"]
+    sid       = "AmazonEBSCSIDriverPolicyEC2CreateV2"
+    effect    = "Allow"
+    actions   = ["ec2:Create*"]
+    resources = ["*"]
   }
   statement {
     sid     = "AmazonEBSCSIDriverPolicyEC2DeleteTagsV2"
