@@ -462,14 +462,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "iam:CreatePolicyVersion",
       "iam:SetDefaultPolicyVersion",
     ]
-    resources = [
-      "${local.base_policy_arn}${local.policy_names.doublecloud}",
-      "${local.base_policy_arn}${local.policy_names.doublecloud_control_plane_EKS}",
-      "${local.base_policy_arn}${local.policy_names.permission_boundary}",
-      "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
-      "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
-      "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
-    ]
+    resources = ["${local.base_policy_arn}${local.policy_names.doublecloud}*"]
   }
 
   statement {
@@ -483,13 +476,8 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test = "StringEquals"
-      values = [
-        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
-      ]
+      test     = "StringLike"
+      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud}*"]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -507,13 +495,8 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test = "StringNotEquals"
-      values = [
-        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
-      ]
+      test     = "StringNotLike"
+      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud}*"]
       variable = "iam:PermissionsBoundary"
     }
   }
