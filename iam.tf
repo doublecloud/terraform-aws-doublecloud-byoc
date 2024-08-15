@@ -55,11 +55,12 @@ resource "aws_iam_policy" "doublecloud_permission_boundary" {
 
 data "aws_iam_policy_document" "doublecloud_permission_boundary" {
   version = "2012-10-17"
-
   statement {
     effect = "Deny"
     actions = [
-      "autoscaling:*",
+      "autoscaling:Create*",
+      "autoscaling:Delete*",
+      "autoscaling:Update*",
     ]
     resources = ["*"]
     condition {
@@ -93,6 +94,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
   }
 
   statement {
+    effect = "Allow"
     actions = [
       "eks:*",
     ]
@@ -102,7 +104,8 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
   statement {
     effect = "Allow"
     actions = [
-      "elasticloadbalancing:*",
+      "elasticloadbalancing:Describe*",
+      "elasticloadbalancing:Get*",
     ]
     resources = ["*"]
   }
@@ -625,6 +628,7 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
     effect = "Allow"
     actions = [
       "autoscaling:Describe*",
+      "autoscaling:Get*",
     ]
     resources = ["*"]
   }
@@ -647,7 +651,8 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
     sid    = "DescribeElasticLoadBalancing"
     effect = "Allow"
     actions = [
-      "elasticloadbalancing:Describe*"
+      "elasticloadbalancing:Describe*",
+      "elasticloadbalancing:Get*"
     ]
     resources = ["*"]
   }
@@ -813,6 +818,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node" {
     effect = "Allow"
     actions = [
       "ec2:AssignPrivateIpAddresses",
+      "ec2:AssignIpv6Addresses",
       "ec2:AttachNetworkInterface",
       "ec2:CreateNetworkInterface",
       "ec2:Describe*",
@@ -875,6 +881,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
     effect = "Allow"
     actions = [
       "ec2:AssignPrivateIpAddresses",
+      "ec2:AssignIpv6Addresses",
       "ec2:AttachNetworkInterface",
       "ec2:CreateNetworkInterface",
       "ec2:Describe*",
@@ -986,5 +993,25 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       values   = ["true"]
       variable = "ec2:ResourceTag/ebs.csi.aws.com/cluster"
     }
+  }
+  statement {
+    sid = "DCNodeAutoScalerDescribeGet"
+    actions = [
+      "ec2:Describe*",
+      "ec2:Get*",
+      "autoscaling:Describe*",
+    ]
+    effect    = "Allow"
+    resources = ["*"]
+  }
+  statement {
+    sid = "DCNodeAutoScalerTerminateSet"
+    actions = [
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "autoscaling:SetDesiredCapacity"
+    ]
+    effect    = "Allow"
+    resources = ["*"]
+    # TODO: add some restrictions here
   }
 }
