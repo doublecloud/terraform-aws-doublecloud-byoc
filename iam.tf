@@ -506,11 +506,132 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
   version = "2012-10-17"
 
   statement {
+    sid    = "ACMAccessDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "acm:RequestCertificate",
+      "acm:DescribeCertificate",
+      "acm:ListCertificates",
+      "acm:DeleteCertificate",
+      "acm:ListTagsForCertificate",
+      "acm:AddTagsToCertificate",
+      "acm:RemoveTagsFromCertificate",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "AutoscalingAllowAllControlplaneEKS"
+    effect = "Allow"
+    actions = [
+      "autoscaling:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["doublecloud-platform"]
+      variable = "aws:ResourceTag/eks:nodegroup-name"
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "autoscaling:Describe*",
+      "autoscaling:Get*",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "EC2AllowAllWithinDoubleCloudVPC"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = [aws_vpc.doublecloud.arn]
+      variable = "ec2:Vpc"
+    }
+  }
+
+  statement {
+    sid    = "EC2AllowAllDoubleCloudVPC"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = [aws_vpc.doublecloud.arn]
+  }
+
+  statement {
+    sid    = "EC2AllowAllDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = [
+      "arn:aws:ec2:${local.region}:${local.account_id}:*/*",
+      "arn:aws:ec2:${local.region}::*/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/atDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "EC2AllowAllDoubleCloudNamed"
+    effect = "Allow"
+    actions = [
+      "ec2:*"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringLike"
+      values   = ["DoubleCloud-Airflow*"]
+      variable = "aws:ResourceTag/Name"
+    }
+  }
+
+  statement {
     sid = "EKSFullAccessDoubleCloud"
     actions = [
       "eks:*",
     ]
     resources = ["arn:aws:eks:${local.region}:${local.account_id}:*/DoubleCloud-Airflow-*"]
+  }
+
+  statement {
+    sid    = "ElasticLoadBalancingAllowAllDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "elasticloadbalancing:*"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "DescribeElasticLoadBalancing"
+    effect = "Allow"
+    actions = [
+      "elasticloadbalancing:Describe*",
+      "elasticloadbalancing:Get*"
+    ]
+    resources = ["*"]
   }
 
   statement {
@@ -525,15 +646,6 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
       variable = "iam:PassedToService"
       values   = ["eks.amazonaws.com"]
     }
-  }
-
-  statement {
-    sid    = "SLRValidation"
-    effect = "Allow"
-    actions = [
-      "iam:GetRole",
-    ]
-    resources = ["arn:aws:iam::${local.account_id}:role/*"]
   }
 
   statement {
@@ -571,110 +683,12 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
   }
 
   statement {
-    sid    = "EC2AllowAllDoubleCloudVPC"
+    sid    = "SLRValidation"
     effect = "Allow"
     actions = [
-      "ec2:*"
+      "iam:GetRole",
     ]
-    resources = [aws_vpc.doublecloud.arn]
-  }
-
-  statement {
-    sid    = "EC2AllowAllWithinDoubleCloudVPC"
-    effect = "Allow"
-    actions = [
-      "ec2:*"
-    ]
-    resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      values   = [aws_vpc.doublecloud.arn]
-      variable = "ec2:Vpc"
-    }
-  }
-
-  statement {
-    sid    = "EC2AllowAllDoubleCloud"
-    effect = "Allow"
-    actions = [
-      "ec2:*"
-    ]
-    resources = [
-      "arn:aws:ec2:${local.region}:${local.account_id}:*/*",
-      "arn:aws:ec2:${local.region}::*/*",
-    ]
-    condition {
-      test     = "StringEquals"
-      values   = ["true"]
-      variable = "aws:ResourceTag/atDoubleCloud"
-    }
-  }
-
-  statement {
-    sid    = "AutoscalingAllowAllControlplaneEKS"
-    effect = "Allow"
-    actions = [
-      "autoscaling:*",
-    ]
-    resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      values   = ["doublecloud-platform"]
-      variable = "aws:ResourceTag/eks:nodegroup-name"
-    }
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "autoscaling:Describe*",
-      "autoscaling:Get*",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "ElasticLoadBalancingAllowAllDoubleCloud"
-    effect = "Allow"
-    actions = [
-      "elasticloadbalancing:*"
-    ]
-    resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      values   = ["true"]
-      variable = "aws:ResourceTag/AtDoubleCloud"
-    }
-  }
-
-  statement {
-    sid    = "DescribeElasticLoadBalancing"
-    effect = "Allow"
-    actions = [
-      "elasticloadbalancing:Describe*",
-      "elasticloadbalancing:Get*"
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "ACMAccessDoubleCloud"
-    effect = "Allow"
-    actions = [
-      "acm:RequestCertificate",
-      "acm:DescribeCertificate",
-      "acm:ListCertificates",
-      "acm:DeleteCertificate",
-      "acm:ListTagsForCertificate",
-      "acm:AddTagsToCertificate",
-      "acm:RemoveTagsFromCertificate",
-    ]
-    resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      values   = ["true"]
-      variable = "aws:ResourceTag/AtDoubleCloud"
-    }
+    resources = ["arn:aws:iam::${local.account_id}:role/*"]
   }
 
   statement {
@@ -752,7 +766,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_cluster" {
   }
 
   statement {
-    sid    = "AmazonEKSClusterPolicyModifyDeleteV6"
+    sid    = "AmazonEKSClusterPolicyModifyDeleteEC2V6"
     effect = "Allow"
     actions = [
       "ec2:DeleteRoute",
@@ -762,6 +776,19 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_cluster" {
       "ec2:ModifyInstanceAttribute",
       "ec2:ModifyVolume",
       "ec2:RevokeSecurityGroupIngress",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/kubernetes.io/cluster/DoubleCloud-Airflow-*"
+      values   = ["owned"]
+    }
+  }
+
+  statement {
+    sid    = "AmazonEKSClusterPolicyModifyDeleteELBV6"
+    effect = "Allow"
+    actions = [
       "elasticloadbalancing:DeleteListener",
       "elasticloadbalancing:DeleteLoadBalancer",
       "elasticloadbalancing:DeleteLoadBalancerListeners",
@@ -775,7 +802,11 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_cluster" {
       "elasticloadbalancing:ModifyTargetGroupAttributes",
     ]
     resources = ["*"]
-    # TODO: add some condition or restriction here
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/elbv2.k8s.aws/cluster"
+      values   = ["DoubleCloud-Airflow-*"]
+    }
   }
 
   statement {
