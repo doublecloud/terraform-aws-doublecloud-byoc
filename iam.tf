@@ -835,7 +835,11 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node" {
       "ec2:UnassignPrivateIpAddresses"
     ]
     resources = ["*"]
-    # TODO: add restriction here
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/cluster.k8s.amazonaws.com/name"
+      values   = ["DoubleCloud-Airflow-*"]
+    }
   }
   statement {
     sid       = "AmazonEKSCNIPolicyTagsV5"
@@ -898,7 +902,11 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "ec2:UnassignPrivateIpAddresses"
     ]
     resources = ["*"]
-    # TODO: add restriction here
+    condition {
+      test     = "StringLike"
+      variable = "aws:ResourceTag/cluster.k8s.amazonaws.com/name"
+      values   = ["DoubleCloud-Airflow-*"]
+    }
   }
   statement {
     sid       = "AmazonEKSCNIPolicyTagsV5"
@@ -937,7 +945,11 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "ec2:ModifyVolume",
     ]
     resources = ["*"]
-    # TODO add restriction here
+    condition {
+      test     = "StringLike"
+      variable = "ec2:ResourceId"
+      values   = ["vol-*DoubleCloud*"]
+    }
   }
   statement {
     sid       = "AmazonEBSCSIDriverPolicyEC2CreateV2"
@@ -953,14 +965,22 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "arn:aws:ec2:*:*:volume/*",
       "arn:aws:ec2:*:*:snapshot/*"
     ]
-    # TODO: add some restrictions here
+    condition {
+      test     = "StringLike"
+      values   = ["DoubleCloud-Airflow-*"]
+      variable = "ec2:ResourceTag/KubernetesCluster"
+    }
   }
   statement {
     sid       = "AmazonEBSCSIDriverPolicyEC2DeleteVolumeV2"
     effect    = "Allow"
     actions   = ["ec2:DeleteVolume"]
     resources = ["*"]
-    # TODO: add some restrictions here
+    condition {
+      test     = "StringLike"
+      values   = ["DoubleCloud-Airflow-*"]
+      variable = "ec2:ResourceTag/KubernetesCluster"
+    }
     condition {
       test     = "StringLike"
       values   = ["true"]
@@ -982,7 +1002,11 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
     effect    = "Allow"
     actions   = ["ec2:DeleteSnapshot"]
     resources = ["*"]
-    # TODO: add some restrictions here
+    condition {
+      test     = "StringLike"
+      values   = ["DoubleCloud-Airflow-*"]
+      variable = "ec2:ResourceTag/KubernetesCluster"
+    }
     condition {
       test     = "StringLike"
       values   = ["*"]
@@ -1010,8 +1034,9 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary_eks_node_platfor
       "autoscaling:TerminateInstanceInAutoScalingGroup",
       "autoscaling:SetDesiredCapacity"
     ]
-    effect    = "Allow"
-    resources = ["*"]
-    # TODO: add some restrictions here
+    effect = "Allow"
+    resources = [
+      "arn:aws:autoscaling:${local.region}:${local.account_id}:autoScalingGroup:*:autoScalingGroupName/*"
+    ]
   }
 }
