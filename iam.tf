@@ -89,6 +89,33 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
 
   statement {
     effect    = "Allow"
+    actions   = ["ec2:CreateTags"]
+    resources = ["*"]
+    condition {
+      test     = "ForAnyValue:StringEquals"
+      variable = "ec2:CreateAction"
+      values = [
+        "RunInstances",
+        "CreateVolume",
+        "CreateNetworkInterface",
+        "CreateVpc",
+        "CreateInternetGateway",
+        "CreateSubnet",
+        "CreateTransitGatewayVpcAttachment",
+        "CreateSecurityGroup",
+        "CreateVpcPeeringConnection",
+        "CreateEgressOnlyInternetGateway",
+        "CreateNatGateway",
+        "AllocateAddress",
+        "CreateRouteTable",
+        "CreateVpcEndpoint",
+        "CreateLaunchTemplate",
+      ]
+    }
+  }
+
+  statement {
+    effect    = "Allow"
     actions   = ["ec2:*"]
     resources = ["*"]
   }
@@ -295,31 +322,11 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     }
   }
 
+  # this is limited to newly created resources in the attached permission boundary
   statement {
     effect    = "Allow"
     actions   = ["ec2:CreateTags"]
     resources = ["*"]
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "ec2:CreateAction"
-      values = [
-        "RunInstances",
-        "CreateVolume",
-        "CreateNetworkInterface",
-        "CreateVpc",
-        "CreateInternetGateway",
-        "CreateSubnet",
-        "CreateTransitGatewayVpcAttachment",
-        "CreateSecurityGroup",
-        "CreateVpcPeeringConnection",
-        "CreateEgressOnlyInternetGateway",
-        "CreateNatGateway",
-        "AllocateAddress",
-        "CreateRouteTable",
-        "CreateVpcEndpoint",
-        "CreateLaunchTemplate",
-      ]
-    }
   }
 
   statement {
