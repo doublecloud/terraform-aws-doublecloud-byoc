@@ -10,6 +10,13 @@ output "iam_role_arn" {
   depends_on = [time_sleep.sleep_to_avoid_iam_race]
 }
 
+output "iam_policy_permission_boundary_arn" {
+  value       = aws_iam_policy.doublecloud_permission_boundary.arn
+  description = "ARN of an IAM policy which is used as a default permission boundary for created roles"
+
+  depends_on = [time_sleep.sleep_to_avoid_iam_race]
+}
+
 output "region_id" {
   value       = local.region
   description = "AWS Region where resources will be created."
