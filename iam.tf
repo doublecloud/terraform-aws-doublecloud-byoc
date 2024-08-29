@@ -156,6 +156,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
         "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
         "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
         "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
+        "${local.base_policy_arn}${local.policy_names.doublecloud}",
       ]
       variable = "iam:PermissionsBoundary"
     }
@@ -189,6 +190,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
         "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
         "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
         "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
+        "${local.base_policy_arn}${local.policy_names.doublecloud}",
       ]
       variable = "iam:PermissionsBoundary"
     }
