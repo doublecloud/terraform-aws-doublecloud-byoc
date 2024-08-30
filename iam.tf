@@ -184,7 +184,7 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test = "StringNotEquals"
+      test = "StringEquals"
       values = [
         "${local.base_policy_arn}${local.policy_names.permission_boundary}",
         "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
