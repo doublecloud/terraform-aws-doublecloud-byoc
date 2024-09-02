@@ -150,8 +150,14 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test     = "StringNotLike"
-      values   = ["${local.base_policy_arn}${local.policy_names.permission_boundary}*"]
+      test = "StringNotEquals"
+      values = [
+        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
+        "${local.base_policy_arn}${local.policy_names.doublecloud}",
+      ]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -178,8 +184,14 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test     = "StringLike"
-      values   = ["${local.base_policy_arn}${local.policy_names.permission_boundary}*"]
+      test = "StringEquals"
+      values = [
+        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
+        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
+        "${local.base_policy_arn}${local.policy_names.doublecloud}",
+      ]
       variable = "iam:PermissionsBoundary"
     }
   }
