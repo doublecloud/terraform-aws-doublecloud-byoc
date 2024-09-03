@@ -224,6 +224,16 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
   }
 
   statement {
+    sid     = "S3AllowAllDoubleCloudPath"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::double-cloud-*",
+      "arn:aws:s3:::double-cloud-*/*"
+    ]
+  }
+
+  statement {
     effect    = "Allow"
     actions   = ["sts:AssumeRole"]
     resources = ["*"]
@@ -711,6 +721,31 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
   }
 
   statement {
+    effect  = "Allow"
+    actions = ["iam:*"]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/DoubleCloud/*",
+      "arn:aws:iam::${local.account_id}:role/DoubleCloud/*",
+      "arn:aws:iam::${local.account_id}:instance-profile/DoubleCloud/*",
+      "arn:aws:iam::${local.account_id}:policy/DoubleCloud/*",
+    ]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "iam:*",
+      "kms:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
     sid    = "RDSAccessDoubleCloud"
     effect = "Allow"
     actions = [
@@ -732,6 +767,30 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
 
       "rds:CreateDBSubnetGroup",
       "rds:DeleteDBSubnetGroup",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid     = "S3AllowAllDoubleCloudPath"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::double-cloud-*",
+      "arn:aws:s3:::double-cloud-*/*"
+    ]
+  }
+
+  statement {
+    sid    = "S3AccessDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "s3:*"
     ]
     resources = ["*"]
     condition {
