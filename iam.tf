@@ -33,7 +33,7 @@ data "aws_iam_policy_document" "dc_trusted_policy" {
 
 # this role is used by base DC services (CH and Kafka)
 resource "aws_iam_role" "doublecloud" {
-  name = local.policy_names.doublecloud_airflow
+  name = local.policy_names.doublecloud
   path = "/DoubleCloud/"
 
   description = "The role that DoubleCloud will assume"
