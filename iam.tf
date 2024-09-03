@@ -215,6 +215,12 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
   }
 
   statement {
+    effect    = "Allow"
+    actions   = ["rds:*"]
+    resources = ["*"]
+  }
+
+  statement {
     effect = "Allow"
     actions = [
       "route53:AssociateVPCWithHostedZone",
@@ -229,7 +235,17 @@ data "aws_iam_policy_document" "doublecloud_permission_boundary" {
     actions = ["s3:*"]
     resources = [
       "arn:aws:s3:::double-cloud-*",
-      "arn:aws:s3:::double-cloud-*/*"
+      "arn:aws:s3:::double-cloud-*/*",
+    ]
+  }
+
+  statement {
+    sid     = "S3AllowAllAirflowLogging"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::airflow-remote-logging-*",
+      "arn:aws:s3:::airflow-remote-logging-*/*",
     ]
   }
 
@@ -745,26 +761,35 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
     }
   }
 
+
   statement {
-    sid    = "RDSAccessDoubleCloud"
+    sid    = "RDSCreateDoubleCloudAirflowArn"
     effect = "Allow"
     actions = [
       "rds:AddTagsToResource",
-
-      "rds:DescribeDBSubnetGroups",
-      "rds:DescribeDBClusters",
-      "rds:DescribeDBInstances",
-
       "rds:CreateDBInstance",
       "rds:CreateDBCluster",
+      "rds:CreateDBParameterGroup",
+    ]
+    resources = [
+      "arn:aws:rds:${local.region}:${local.account_id}:*:airflow-afc*",
+      "arn:aws:rds:${local.region}:${local.account_id}:*:postgres*-airflow-db-*",
+    ]
+  }
+
+  statement {
+    sid    = "RDSDescribeModifyDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "rds:Describe*",
+      "rds:Get*",
+      "rds:Modify*",
       "rds:DeleteDBInstance",
       "rds:DeleteDBCluster",
-
       "rds:StartDBInstance",
       "rds:StartDBCluster",
       "rds:StopDBInstance",
       "rds:StopDBCluster",
-
       "rds:CreateDBSubnetGroup",
       "rds:DeleteDBSubnetGroup",
     ]
@@ -785,6 +810,17 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
       "arn:aws:s3:::double-cloud-*/*"
     ]
   }
+
+  statement {
+    sid     = "S3AllowAllAirflowLogging"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::airflow-remote-logging-*",
+      "arn:aws:s3:::airflow-remote-logging-*/*",
+    ]
+  }
+
 
   statement {
     sid    = "S3AccessDoubleCloud"
