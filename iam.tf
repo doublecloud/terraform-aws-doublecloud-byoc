@@ -706,7 +706,7 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
 # AWS IAM returns AccessDenied error right after Role creation.
 # We have to wait some time to make this role assumable.
 # https://github.com/hashicorp/terraform-provider-aws/issues/6566
-resource "time_sleep" "sleep_to_avoid_iam_race" {
+resource "time_sleep" "sleep_to_avoid_iam_race_airflow" {
   depends_on      = [aws_iam_role.doublecloud_airflow]
   create_duration = "30s"
 }
