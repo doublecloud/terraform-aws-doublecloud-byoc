@@ -5,8 +5,7 @@ locals {
   base_policy_arn = "arn:aws:iam::${local.account_id}:policy/DoubleCloud/"
   policy_names = {
     doublecloud                           = "import-${aws_vpc.doublecloud.id}"
-    doublecloud_control_plane_EKS         = "import-${aws_vpc.doublecloud.id}-ControlPlaneEKS"
-    permission_boundary                   = "import-${aws_vpc.doublecloud.id}-permission-boundary"
+    doublecloud_airflow                   = "import-${aws_vpc.doublecloud.id}-airflow"
     permission_boundary_eks_cluster       = "import-${aws_vpc.doublecloud.id}-permission-boundary-eks-cluster"
     permission_boundary_eks_node          = "import-${aws_vpc.doublecloud.id}-permission-boundary-eks-node"
     permission_boundary_eks_node_platform = "import-${aws_vpc.doublecloud.id}-permission-boundary-eks-node-platform"
@@ -15,21 +14,7 @@ locals {
   role_arn = "arn:aws:iam::${local.account_id}:role/DoubleCloud/import-${aws_vpc.doublecloud.id}"
 }
 
-resource "aws_iam_role" "doublecloud" {
-  name = local.policy_names.doublecloud
-  path = "/DoubleCloud/"
-
-  description = "The role that DoubleCloud will assume"
-
-  assume_role_policy   = data.aws_iam_policy_document.trusted_policy.json
-  permissions_boundary = aws_iam_policy.doublecloud_permission_boundary.arn
-  managed_policy_arns = [
-    "${local.base_policy_arn}${local.policy_names.doublecloud}",
-    "${local.base_policy_arn}${local.policy_names.doublecloud_control_plane_EKS}",
-  ]
-}
-
-data "aws_iam_policy_document" "trusted_policy" {
+data "aws_iam_policy_document" "dc_trusted_policy" {
   version = "2012-10-17"
   statement {
     sid    = "DoubleCloudCanAssumeThisRole"
@@ -46,198 +31,16 @@ data "aws_iam_policy_document" "trusted_policy" {
   }
 }
 
-resource "aws_iam_policy" "doublecloud_permission_boundary" {
-  name = local.policy_names.permission_boundary
+# this role is used by base DC services (CH and Kafka)
+resource "aws_iam_role" "doublecloud" {
+  name = local.policy_names.doublecloud
   path = "/DoubleCloud/"
 
-  policy = data.aws_iam_policy_document.doublecloud_permission_boundary.json
-}
+  description = "The role that DoubleCloud will assume"
 
-data "aws_iam_policy_document" "doublecloud_permission_boundary" {
-  version = "2012-10-17"
-  statement {
-    effect = "Deny"
-    actions = [
-      "autoscaling:Create*",
-      "autoscaling:Delete*",
-      "autoscaling:Update*",
-    ]
-    resources = ["*"]
-    condition {
-      test     = "StringNotEquals"
-      values   = ["doublecloud-platform"]
-      variable = "aws:ResourceTag/eks:nodegroup-name"
-    }
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "autoscaling:*",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    effect = "Deny"
-    actions = [
-      "ec2:CreateVpc",
-      "ec2:DeleteVpc",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["ec2:CreateTags"]
-    resources = ["*"]
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "ec2:CreateAction"
-      values = [
-        "RunInstances",
-        "CreateVolume",
-        "CreateNetworkInterface",
-        "CreateVpc",
-        "CreateInternetGateway",
-        "CreateSubnet",
-        "CreateTransitGatewayVpcAttachment",
-        "CreateSecurityGroup",
-        "CreateVpcPeeringConnection",
-        "CreateEgressOnlyInternetGateway",
-        "CreateNatGateway",
-        "AllocateAddress",
-        "CreateRouteTable",
-        "CreateVpcEndpoint",
-        "CreateLaunchTemplate",
-      ]
-    }
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["ec2:*"]
-    resources = ["*"]
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "eks:*",
-    ]
-    resources = ["arn:aws:eks:${local.region}:${local.account_id}:*/DoubleCloud-Airflow-*"]
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "elasticloadbalancing:Describe*",
-      "elasticloadbalancing:Get*",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    effect = "Deny"
-    actions = [
-      "iam:PutUserPermissionsBoundary",
-      "iam:PutRolePermissionsBoundary",
-      "iam:CreateUser",
-      "iam:CreateRole",
-    ]
-    resources = [
-      "arn:aws:iam::${local.account_id}:user/*",
-      "arn:aws:iam::${local.account_id}:role/*",
-    ]
-    condition {
-      test = "StringNotEquals"
-      values = [
-        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
-        "${local.base_policy_arn}${local.policy_names.doublecloud}",
-      ]
-      variable = "iam:PermissionsBoundary"
-    }
-  }
-
-  statement {
-    effect = "Deny"
-    actions = [
-      "iam:DeletePolicy",
-      "iam:DeletePolicyVersion",
-      "iam:CreatePolicyVersion",
-      "iam:SetDefaultPolicyVersion",
-    ]
-    resources = ["${local.base_policy_arn}${local.policy_names.doublecloud}*"]
-  }
-
-  statement {
-    effect = "Deny"
-    actions = [
-      "iam:DeleteUserPermissionsBoundary",
-      "iam:DeleteRolePermissionsBoundary",
-    ]
-    resources = [
-      "arn:aws:iam::${local.account_id}:user/*",
-      "arn:aws:iam::${local.account_id}:role/*",
-    ]
-    condition {
-      test = "StringEquals"
-      values = [
-        "${local.base_policy_arn}${local.policy_names.permission_boundary}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_cluster}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node}",
-        "${local.base_policy_arn}${local.policy_names.permission_boundary_eks_node_platform}",
-        "${local.base_policy_arn}${local.policy_names.doublecloud}",
-      ]
-      variable = "iam:PermissionsBoundary"
-    }
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["iam:*"]
-    resources = ["*"]
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["kms:CreateAlias"]
-    resources = ["*"]
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["ram:*"]
-    resources = ["*"]
-  }
-
-  statement {
-    effect = "Allow"
-    actions = [
-      "route53:AssociateVPCWithHostedZone",
-      "route53:DisassociateVPCFromHostedZone",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["sts:AssumeRole"]
-    resources = ["*"]
-  }
-
-  statement {
-    actions   = ["*"]
-    resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      values   = ["true"]
-      variable = "aws:ResourceTag/AtDoubleCloud"
-    }
-  }
+  assume_role_policy   = data.aws_iam_policy_document.dc_trusted_policy.json
+  permissions_boundary = aws_iam_policy.doublecloud.arn
+  managed_policy_arns  = [aws_iam_policy.doublecloud.arn]
 }
 
 resource "aws_iam_policy" "doublecloud" {
@@ -284,7 +87,6 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "ec2:AllocateAddress",
       "ec2:CreateRouteTable",
       "ec2:CreateVpcEndpoint",
-      "ec2:CreateLaunchTemplate",
     ]
     resources = [
       "arn:aws:ec2:${local.region}:${var.doublecloud_controlplane_account_id}:transit-gateway/*",
@@ -299,7 +101,6 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:ec2:${local.region}:${local.account_id}:elastic-ip/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:route-table/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:vpc-endpoint/*",
-      "arn:aws:ec2:${local.region}:${local.account_id}:launch-template/*",
     ]
   }
 
@@ -334,11 +135,30 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
     }
   }
 
-  # this is limited to newly created resources in the attached permission boundary
   statement {
     effect    = "Allow"
     actions   = ["ec2:CreateTags"]
     resources = ["*"]
+    condition {
+      test     = "ForAnyValue:StringEquals"
+      variable = "ec2:CreateAction"
+      values = [
+        "RunInstances",
+        "CreateVolume",
+        "CreateNetworkInterface",
+        "CreateVpc",
+        "CreateInternetGateway",
+        "CreateSubnet",
+        "CreateTransitGatewayVpcAttachment",
+        "CreateSecurityGroup",
+        "CreateVpcPeeringConnection",
+        "CreateEgressOnlyInternetGateway",
+        "CreateNatGateway",
+        "AllocateAddress",
+        "CreateRouteTable",
+        "CreateVpcEndpoint",
+      ]
+    }
   }
 
   statement {
@@ -474,7 +294,7 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "iam:CreatePolicyVersion",
       "iam:SetDefaultPolicyVersion",
     ]
-    resources = ["${local.base_policy_arn}${local.policy_names.doublecloud}*"]
+    resources = ["${local.base_policy_arn}${local.policy_names.doublecloud}"]
   }
 
   statement {
@@ -488,8 +308,8 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test     = "StringLike"
-      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud}*"]
+      test     = "StringEquals"
+      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud}"]
       variable = "iam:PermissionsBoundary"
     }
   }
@@ -507,21 +327,41 @@ data "aws_iam_policy_document" "doublecloud_permissions" {
       "arn:aws:iam::${local.account_id}:role/*",
     ]
     condition {
-      test     = "StringNotLike"
-      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud}*"]
+      test     = "StringNotEquals"
+      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud}"]
       variable = "iam:PermissionsBoundary"
     }
   }
 }
 
-resource "aws_iam_policy" "doublecloud_ControlPlaneEKS" {
-  name = local.policy_names.doublecloud_control_plane_EKS
-  path = "/DoubleCloud/"
-
-  policy = data.aws_iam_policy_document.doublecloud_control_plane_EKS_permissions.json
+# AWS IAM returns AccessDenied error right after Role creation.
+# We have to wait some time to make this role assumable.
+# https://github.com/hashicorp/terraform-provider-aws/issues/6566
+resource "time_sleep" "sleep_to_avoid_iam_race" {
+  depends_on      = [aws_iam_role.doublecloud]
+  create_duration = "30s"
 }
 
-data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
+# this role is used by Airflow/KRuntime
+resource "aws_iam_role" "doublecloud_airflow" {
+  name = local.policy_names.doublecloud_airflow
+  path = "/DoubleCloud/"
+
+  description = "The role that DoubleCloud will assume for airflow service"
+
+  assume_role_policy   = data.aws_iam_policy_document.dc_trusted_policy.json
+  permissions_boundary = aws_iam_policy.doublecloud_airflow.arn
+  managed_policy_arns  = [aws_iam_policy.doublecloud_airflow.arn]
+}
+
+resource "aws_iam_policy" "doublecloud_airflow" {
+  name = local.policy_names.doublecloud_airflow
+  path = "/DoubleCloud/"
+
+  policy = data.aws_iam_policy_document.doublecloud_airflow.json
+}
+
+data "aws_iam_policy_document" "doublecloud_airflow" {
   version = "2012-10-17"
 
   statement {
@@ -702,6 +542,93 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
   }
 
   statement {
+    sid    = "AllowAllIAMKMSDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "iam:*",
+      "kms:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "DenyChangesToDoubleCloudAirflowPolicy"
+    effect = "Deny"
+    actions = [
+      "iam:DeletePolicy",
+      "iam:DeletePolicyVersion",
+      "iam:CreatePolicyVersion",
+      "iam:SetDefaultPolicyVersion",
+    ]
+    resources = ["${local.base_policy_arn}${local.policy_names.doublecloud_airflow}"]
+  }
+
+  statement {
+    sid    = "DenyChangesToDoubleCloudAirflowPermissionBoundary"
+    effect = "Deny"
+    actions = [
+      "iam:DeleteUserPermissionsBoundary",
+      "iam:DeleteRolePermissionsBoundary",
+    ]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/*",
+      "arn:aws:iam::${local.account_id}:role/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud_airflow}"]
+      variable = "iam:PermissionsBoundary"
+    }
+  }
+
+  statement {
+    sid    = "DenyCreateUpdateUserRoleWithoutDoubleCloudAirflowPermissionBoundary"
+    effect = "Deny"
+    actions = [
+      "iam:PutUserPermissionsBoundary",
+      "iam:PutRolePermissionsBoundary",
+      "iam:CreateUser",
+      "iam:CreateRole",
+    ]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/*",
+      "arn:aws:iam::${local.account_id}:role/*",
+    ]
+    condition {
+      test     = "StringNotEquals"
+      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud_airflow}"]
+      variable = "iam:PermissionsBoundary"
+    }
+  }
+
+  statement {
+    sid    = "IAMAllowEKSRoleManagementDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "iam:AttachRolePolicy",
+      "iam:CreatePolicy",
+      "iam:DeletePolicy",
+      "iam:DeleteRole",
+      "iam:DeleteRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:GetPolicy",
+      "iam:ListPolicies",
+      "iam:TagPolicy",
+      "iam:TagRole",
+      "iam:TagPolicy",
+    ]
+    resources = [
+      "arn:*:iam::*:role/DoubleCloud/*",
+      "arn:*:iam::*:policy/DoubleCloud/*"
+    ]
+  }
+
+  statement {
     sid    = "SLRValidation"
     effect = "Allow"
     actions = [
@@ -740,13 +667,47 @@ data "aws_iam_policy_document" "doublecloud_control_plane_EKS_permissions" {
       variable = "aws:ResourceTag/AtDoubleCloud"
     }
   }
+
+  statement {
+    sid    = "S3AccessDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "s3:AbortMultipartUpload",
+      "s3:CreateBucket",
+
+      "s3:DeleteBucket",
+      "s3:DeleteObject",
+
+      "s3:GetBucketAcl",
+      "s3:GetBucketLocation",
+      "s3:GetBucketTagging",
+      "s3:GetBucketPolicy",
+      "s3:GetEncryptionConfiguration",
+
+      "s3:ListBucket",
+      "s3:ListBucketMultipartUploads",
+      "s3:ListMultipartUploadParts",
+
+      "s3:PutBucketAcl",
+      "s3:PutBucketTagging",
+      "s3:PutBucketPolicy",
+      "s3:PutLifecycleConfiguration",
+      "s3:PutEncryptionConfiguration"
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
 }
 
 # AWS IAM returns AccessDenied error right after Role creation.
 # We have to wait some time to make this role assumable.
 # https://github.com/hashicorp/terraform-provider-aws/issues/6566
-resource "time_sleep" "sleep_to_avoid_iam_race" {
-  depends_on      = [aws_iam_role.doublecloud]
+resource "time_sleep" "sleep_to_avoid_iam_race_airflow" {
+  depends_on      = [aws_iam_role.doublecloud_airflow]
   create_duration = "30s"
 }
 
