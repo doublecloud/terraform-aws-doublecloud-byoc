@@ -31,6 +31,7 @@ data "aws_iam_policy_document" "dc_trusted_policy" {
   }
 }
 
+# this role is used by base DC services (CH and Kafka)
 resource "aws_iam_role" "doublecloud" {
   name = local.policy_names.doublecloud_airflow
   path = "/DoubleCloud/"
@@ -341,6 +342,7 @@ resource "time_sleep" "sleep_to_avoid_iam_race" {
   create_duration = "30s"
 }
 
+# this role is used by Airflow/KRuntime
 resource "aws_iam_role" "doublecloud_airflow" {
   name = local.policy_names.doublecloud_airflow
   path = "/DoubleCloud/"
@@ -540,6 +542,93 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
   }
 
   statement {
+    sid    = "AllowAllIAMKMSDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "iam:*",
+      "kms:*",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "DenyChangesToDoubleCloudAirflowPolicy"
+    effect = "Deny"
+    actions = [
+      "iam:DeletePolicy",
+      "iam:DeletePolicyVersion",
+      "iam:CreatePolicyVersion",
+      "iam:SetDefaultPolicyVersion",
+    ]
+    resources = ["${local.base_policy_arn}${local.policy_names.doublecloud_airflow}"]
+  }
+
+  statement {
+    sid    = "DenyChangesToDoubleCloudAirflowPermissionBoundary"
+    effect = "Deny"
+    actions = [
+      "iam:DeleteUserPermissionsBoundary",
+      "iam:DeleteRolePermissionsBoundary",
+    ]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/*",
+      "arn:aws:iam::${local.account_id}:role/*",
+    ]
+    condition {
+      test     = "StringEquals"
+      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud_airflow}"]
+      variable = "iam:PermissionsBoundary"
+    }
+  }
+
+  statement {
+    sid    = "DenyCreateUpdateUserRoleWithoutDoubleCloudAirflowPermissionBoundary"
+    effect = "Deny"
+    actions = [
+      "iam:PutUserPermissionsBoundary",
+      "iam:PutRolePermissionsBoundary",
+      "iam:CreateUser",
+      "iam:CreateRole",
+    ]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/*",
+      "arn:aws:iam::${local.account_id}:role/*",
+    ]
+    condition {
+      test     = "StringNotEquals"
+      values   = ["${local.base_policy_arn}${local.policy_names.doublecloud_airflow}"]
+      variable = "iam:PermissionsBoundary"
+    }
+  }
+
+  statement {
+    sid    = "IAMAllowEKSRoleManagementDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "iam:AttachRolePolicy",
+      "iam:CreatePolicy",
+      "iam:DeletePolicy",
+      "iam:DeleteRole",
+      "iam:DeleteRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:GetPolicy",
+      "iam:ListPolicies",
+      "iam:TagPolicy",
+      "iam:TagRole",
+      "iam:TagPolicy",
+    ]
+    resources = [
+      "arn:*:iam::*:role/DoubleCloud/*",
+      "arn:*:iam::*:policy/DoubleCloud/*"
+    ]
+  }
+
+  statement {
     sid    = "SLRValidation"
     effect = "Allow"
     actions = [
@@ -570,6 +659,40 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
 
       "rds:CreateDBSubnetGroup",
       "rds:DeleteDBSubnetGroup",
+    ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      values   = ["true"]
+      variable = "aws:ResourceTag/AtDoubleCloud"
+    }
+  }
+
+  statement {
+    sid    = "S3AccessDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "s3:AbortMultipartUpload",
+      "s3:CreateBucket",
+
+      "s3:DeleteBucket",
+      "s3:DeleteObject",
+
+      "s3:GetBucketAcl",
+      "s3:GetBucketLocation",
+      "s3:GetBucketTagging",
+      "s3:GetBucketPolicy",
+      "s3:GetEncryptionConfiguration",
+
+      "s3:ListBucket",
+      "s3:ListBucketMultipartUploads",
+      "s3:ListMultipartUploadParts",
+
+      "s3:PutBucketAcl",
+      "s3:PutBucketTagging",
+      "s3:PutBucketPolicy",
+      "s3:PutLifecycleConfiguration",
+      "s3:PutEncryptionConfiguration"
     ]
     resources = ["*"]
     condition {
