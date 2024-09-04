@@ -638,27 +638,36 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
   }
 
   statement {
-    sid    = "RDSAccessDoubleCloud"
+    effect  = "Allow"
+    actions = ["iam:*"]
+    resources = [
+      "arn:aws:iam::${local.account_id}:user/DoubleCloud/*",
+      "arn:aws:iam::${local.account_id}:role/DoubleCloud/*",
+      "arn:aws:iam::${local.account_id}:instance-profile/DoubleCloud/*",
+      "arn:aws:iam::${local.account_id}:policy/DoubleCloud/*",
+    ]
+  }
+
+  statement {
+    sid    = "RDSCreateDoubleCloudAirflowArn"
     effect = "Allow"
     actions = [
       "rds:AddTagsToResource",
-
-      "rds:DescribeDBSubnetGroups",
-      "rds:DescribeDBClusters",
-      "rds:DescribeDBInstances",
-
       "rds:CreateDBInstance",
       "rds:CreateDBCluster",
-      "rds:DeleteDBInstance",
-      "rds:DeleteDBCluster",
+      "rds:CreateDBParameterGroup",
+    ]
+    resources = [
+      "arn:aws:rds:${local.region}:${local.account_id}:*:airflow-afc*",
+      "arn:aws:rds:${local.region}:${local.account_id}:*:postgres*-airflow-db-*",
+    ]
+  }
 
-      "rds:StartDBInstance",
-      "rds:StartDBCluster",
-      "rds:StopDBInstance",
-      "rds:StopDBCluster",
-
-      "rds:CreateDBSubnetGroup",
-      "rds:DeleteDBSubnetGroup",
+  statement {
+    sid    = "RDSAllowAllDoubleCloud"
+    effect = "Allow"
+    actions = [
+      "rds:*",
     ]
     resources = ["*"]
     condition {
@@ -669,30 +678,30 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
   }
 
   statement {
-    sid    = "S3AccessDoubleCloud"
+    sid     = "S3AllowAllDoubleCloudPath"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::double-cloud-*",
+      "arn:aws:s3:::double-cloud-*/*"
+    ]
+  }
+
+  statement {
+    sid     = "S3AllowAllAirflowLogging"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::airflow-remote-logging-*",
+      "arn:aws:s3:::airflow-remote-logging-*/*",
+    ]
+  }
+
+  statement {
+    sid    = "S3AllowAllDoubleCloud"
     effect = "Allow"
     actions = [
-      "s3:AbortMultipartUpload",
-      "s3:CreateBucket",
-
-      "s3:DeleteBucket",
-      "s3:DeleteObject",
-
-      "s3:GetBucketAcl",
-      "s3:GetBucketLocation",
-      "s3:GetBucketTagging",
-      "s3:GetBucketPolicy",
-      "s3:GetEncryptionConfiguration",
-
-      "s3:ListBucket",
-      "s3:ListBucketMultipartUploads",
-      "s3:ListMultipartUploadParts",
-
-      "s3:PutBucketAcl",
-      "s3:PutBucketTagging",
-      "s3:PutBucketPolicy",
-      "s3:PutLifecycleConfiguration",
-      "s3:PutEncryptionConfiguration"
+      "s3:*"
     ]
     resources = ["*"]
     condition {
