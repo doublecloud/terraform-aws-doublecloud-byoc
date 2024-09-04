@@ -638,6 +638,7 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
   }
 
   statement {
+    sid     = "AllowIAMDoubleCloud"
     effect  = "Allow"
     actions = ["iam:*"]
     resources = [
