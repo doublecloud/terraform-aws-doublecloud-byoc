@@ -370,6 +370,7 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
     actions = [
       "acm:*",
       "autoscaling:*",
+      "ec2:*",
       "elasticloadbalancing:*",
       "kms:*",
       "iam:*",
@@ -398,7 +399,8 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
     effect = "Allow"
     actions = [
       "ec2:Describe*",
-      "ec2:Get*"
+      "ec2:Get*",
+      "ec2:RunInstances"
     ]
     resources = ["*"]
     condition {
@@ -421,6 +423,7 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
       "arn:aws:ec2:${local.region}:${local.account_id}:volume/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:elastic-ip/*",
       "arn:aws:ec2:${local.region}:${local.account_id}:vpc-endpoint/*",
+      "arn:aws:ec2:${local.region}:${local.account_id}:launch-template/*",
     ]
   }
 
@@ -439,6 +442,7 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
         "CreateSecurityGroup",
         "AllocateAddress",
         "CreateVpcEndpoint",
+        "CreateLaunchTemplate"
       ]
     }
   }
@@ -464,23 +468,6 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
       "ec2:*"
     ]
     resources = [aws_vpc.doublecloud.arn]
-  }
-
-  statement {
-    sid    = "EC2AllowAllDoubleCloud"
-    effect = "Allow"
-    actions = [
-      "ec2:*"
-    ]
-    resources = [
-      "arn:aws:ec2:${local.region}:${local.account_id}:*/*",
-      "arn:aws:ec2:${local.region}::*/*",
-    ]
-    condition {
-      test     = "StringEquals"
-      values   = ["true"]
-      variable = "aws:ResourceTag/atDoubleCloud"
-    }
   }
 
   statement {
@@ -682,20 +669,12 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
   }
 
   statement {
-    sid     = "S3AllowAllDoubleCloudPath"
+    sid     = "S3AllowAllDoubleCloud"
     effect  = "Allow"
     actions = ["s3:*"]
     resources = [
       "arn:aws:s3:::double-cloud-*",
-      "arn:aws:s3:::double-cloud-*/*"
-    ]
-  }
-
-  statement {
-    sid     = "S3AllowAllAirflowLogging"
-    effect  = "Allow"
-    actions = ["s3:*"]
-    resources = [
+      "arn:aws:s3:::double-cloud-*/*",
       "arn:aws:s3:::airflow-remote-logging-*",
       "arn:aws:s3:::airflow-remote-logging-*/*",
     ]
