@@ -655,6 +655,7 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
       "rds:CreateDBInstance",
       "rds:CreateDBCluster",
       "rds:CreateDBParameterGroup",
+      "rds:ModifyDBParameterGroup",
     ]
     resources = [
       "arn:aws:rds:${local.region}:${local.account_id}:*:airflow-afc*",
@@ -671,6 +672,12 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
       "arn:aws:s3:::airflow-remote-logging-*",
       "arn:aws:s3:::airflow-remote-logging-*/*",
     ]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["kms:CreateAlias"]
+    resources = ["arn:aws:kms:${local.region}:${local.account_id}:alias/airflow-afc*"]
   }
 }
 
