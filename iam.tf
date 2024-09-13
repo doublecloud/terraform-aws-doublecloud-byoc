@@ -649,12 +649,19 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
   }
 
   statement {
+    effect    = "Allow"
+    actions   = ["kms:CreateAlias"]
+    resources = ["arn:aws:kms:${local.region}:${local.account_id}:alias/airflow-afc*"]
+  }
+
+  statement {
     effect = "Allow"
     actions = [
       "rds:AddTagsToResource",
       "rds:CreateDBInstance",
       "rds:CreateDBCluster",
       "rds:CreateDBParameterGroup",
+      "rds:ModifyDBParameterGroup",
     ]
     resources = [
       "arn:aws:rds:${local.region}:${local.account_id}:*:airflow-afc*",
