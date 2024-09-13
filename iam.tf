@@ -649,6 +649,12 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
   }
 
   statement {
+    effect    = "Allow"
+    actions   = ["kms:CreateAlias"]
+    resources = ["arn:aws:kms:${local.region}:${local.account_id}:alias/airflow-afc*"]
+  }
+
+  statement {
     effect = "Allow"
     actions = [
       "rds:AddTagsToResource",
@@ -672,12 +678,6 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
       "arn:aws:s3:::airflow-remote-logging-*",
       "arn:aws:s3:::airflow-remote-logging-*/*",
     ]
-  }
-
-  statement {
-    effect    = "Allow"
-    actions   = ["kms:CreateAlias"]
-    resources = ["arn:aws:kms:${local.region}:${local.account_id}:alias/airflow-afc*"]
   }
 }
 
