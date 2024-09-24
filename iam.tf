@@ -661,6 +661,7 @@ data "aws_iam_policy_document" "doublecloud_airflow" {
       "rds:CreateDBInstance",
       "rds:CreateDBCluster",
       "rds:CreateDBParameterGroup",
+      "rds:ModifyDBInstance",
       "rds:ModifyDBParameterGroup",
     ]
     resources = [
